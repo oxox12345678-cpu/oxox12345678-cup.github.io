@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026存錢錢</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap');
+        
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #ffffff;
+            color: #333;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* 標題一字一色設定 */
+        .title-char { font-weight: 900; }
+        .c1 { color: #ef4444; } /* 紅 */
+        .c2 { color: #f97316; } /* 橙 */
+        .c3 { color: #eab308; } /* 黃 */
+        .c4 { color: #22c55e; } /* 綠 */
+        .c5 { color: #3b82f6; } /* 藍 */
+        .c6 { color: #ef4444; } /* 紅 (循環) */
+        .c7 { color: #f97316; } /* 橙 (循環) */
+
+        /* 下拉動畫 */
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .accordion-content.active {
+            max-height: 1500px; /* 足夠容納週數與備用金 */
+        }
+
+        /* 月份背景色彩 */
+        .bg-red { background-color: #ef4444; }
+        .bg-orange { background-color: #f97316; }
+        .bg-yellow { background-color: #eab308; }
+        .bg-green { background-color: #22c55e; }
+        .bg-blue { background-color: #3b82f6; }
+
+        /* 打氣小語提示 */
+        .toast-msg {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1f2937;
+            color: white;
+            padding: 14px 28px;
+            border-radius: 50px;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        /* 隱藏數字輸入框的箭頭 */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .custom-check {
+            width: 1.5rem;
+            height: 1.5rem;
+            accent-color: #1f2937;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="py-10 px-4">
+    <div class="max-w-md mx-auto">
+        <!-- 標題區：一字一色 -->
+        <h1 class="text-5xl text-center mb-10 tracking-tighter">
+            <span class="title-char c1">2</span><span class="title-char c2">0</span><span class="title-char c3">2</span><span class="title-char c4">6</span><span class="title-char c5">存</span><span class="title-char c6">錢</span><span class="title-char c7">錢</span>
+        </h1>
+
+        <!-- 年度總額顯示 -->
+        <div class="mb-8 text-center bg-gray-50 py-8 rounded-[2rem] border border-gray-100 shadow-inner">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">2026 年度累計已存</p>
+            <p id="total-saved-display" class="text-5xl font-black text-slate-800">$0</p>
+        </div>
+
+        <!-- 月份容器 -->
+        <div id="months-list" class="space-y-4 mb-20">
+            <!-- 由 JavaScript 動態生成 -->
+        </div>
+    </div>
+
+    <!-- 加油打氣小語容器 -->
+    <div id="toast" class="toast-msg"></div>
+
+    <script>
+        const monthNames = ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"];
+        const colorThemes = ["bg-red", "bg-orange", "bg-yellow", "bg-green", "bg-blue"];
+        const encouragements = [
+            "漂亮！離目標又近了一步！",
+            "每一分錢都在感謝你的克制！",
+            "自律的你，正在閃閃發亮！",
+            "小錢積累起來就是大財富！",
+            "存錢小能手就是你！",
+            "今天的努力，是明天的自由！",
+            "做得好！這是對未來的投資！",
+            "你是最棒的，繼續保持！"
+        ];
+
+        // 應用程式狀態
+        let appState = {
+            weeks: [],
+            emergency: {} // monthIndex: amount
+        };
+
+        // 初始化資料
+        function init() {
+            const savedData = localStorage.getItem('savings_app_2026');
+            if (savedData) {
+                appState = JSON.parse(savedData);
+            } else {
+                generate2026Weeks();
+                // 初始化每個月備用金為 0
+                monthNames.forEach((_, i) => appState.emergency[i] = 0);
+                save();
+            }
+            render();
+        }
+
+        // 產生 2026 年週計畫 (天數少於3天併入鄰近週)
+        function generate2026Weeks() {
+            const year = 2026;
+            const startDate = new Date(year, 0, 1);
+            const endDate = new Date(year, 11, 31);
+            
+            let current = new Date(startDate);
+            // 調整到週一
+            let day = current.getDay();
+            let diff = current.getDate() - day + (day === 0 ? -6 : 1);
+            current.setDate(diff);
+
+            while (current <= endDate) {
+                let ws = new Date(current);
+                let we = new Date(current);
+                we.setDate(we.getDate() + 6);
+                
+                // 以週中(週四)決定月份歸屬
+                let mid = new Date(ws);
+                mid.setDate(mid.getDate() + 3);
+                let m = mid.getMonth();
+
+                appState.weeks.push({
+                    id: 'wk-' + ws.getTime(),
+                    month: m,
+                    label: `${ws.getMonth() + 1}/${ws.getDate()} - ${we.getMonth() + 1}/${we.getDate()}`,
+                    amount: 500,
+                    checked: false
+                });
+                current.setDate(current.getDate() + 7);
+            }
+        }
+
+        function save() {
+            localStorage.setItem('savings_app_2026', JSON.stringify(appState));
+        }
+
+        function render() {
+            const list = document.getElementById('months-list');
+            list.innerHTML = '';
+            let grandTotal = 0;
+
+            monthNames.forEach((name, idx) => {
+                const monthWeeks = appState.weeks.filter(w => w.month === idx);
+                const weekTotal = monthWeeks.filter(w => w.checked).reduce((sum, w) => sum + w.amount, 0);
+                const emergencyTotal = appState.emergency[idx] || 0;
+                const monthTotal = weekTotal + emergencyTotal;
+                
+                grandTotal += monthTotal;
+                const themeColor = colorThemes[idx % colorThemes.length];
+
+                const monthContainer = document.createElement('div');
+                monthContainer.className = "rounded-[1.5rem] overflow-hidden shadow-md border border-gray-100";
+
+                monthContainer.innerHTML = `
+                    <button class="w-full px-6 py-5 flex justify-between items-center text-white ${themeColor} active:opacity-90" onclick="toggle(${idx})">
+                        <span class="font-black text-2xl tracking-tight">${name}</span>
+                        <div class="text-right">
+                            <span class="text-[10px] opacity-80 block font-bold uppercase tracking-wider">本月已存</span>
+                            <span class="font-black text-xl">$${monthTotal.toLocaleString()}</span>
+                        </div>
+                    </button>
+                    <div id="month-box-${idx}" class="accordion-content bg-white">
+                        <div class="p-4 space-y-3">
+                            ${monthWeeks.map(w => `
+                                <div class="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100">
+                                    <div class="flex items-center gap-3">
+                                        <input type="checkbox" ${w.checked ? 'checked' : ''} 
+                                               onchange="toggleWeek('${w.id}')"
+                                               class="custom-check">
+                                        <span class="text-xs font-bold text-gray-400 font-mono">${w.label}</span>
+                                    </div>
+                                    <div class="flex items-center gap-1 border-b border-gray-200">
+                                        <span class="text-gray-300 text-xs font-bold">$</span>
+                                        <input type="number" value="${w.amount}" 
+                                               onchange="updateWeekAmount('${w.id}', this.value)"
+                                               class="w-16 text-right font-bold text-slate-700 bg-transparent focus:outline-none py-1">
+                                    </div>
+                                </div>
+                            `).join('')}
+
+                            <!-- 緊急備用金欄位 -->
+                            <div class="mt-4 pt-4 border-t border-dashed border-gray-200">
+                                <div class="flex items-center justify-between bg-slate-800 p-4 rounded-xl">
+                                    <div class="text-left">
+                                        <p class="font-black text-[10px] text-slate-400 uppercase tracking-widest">緊急備用金</p>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-yellow-500 font-black text-sm">$</span>
+                                        <input type="number" value="${emergencyTotal}" 
+                                               onchange="updateEmergency(${idx}, this.value)"
+                                               class="w-24 text-right font-black text-white bg-slate-700 border-none rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-yellow-500 focus:outline-none transition-all">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                list.appendChild(monthContainer);
+            });
+
+            document.getElementById('total-saved-display').innerText = `$${grandTotal.toLocaleString()}`;
+        }
+
+        // 月份下拉切換
+        window.toggle = function(idx) {
+            const el = document.getElementById(`month-box-${idx}`);
+            el.classList.toggle('active');
+        };
+
+        // 週完成勾選
+        window.toggleWeek = function(id) {
+            const week = appState.weeks.find(w => w.id === id);
+            if (week) {
+                week.checked = !week.checked;
+                if (week.checked) showToast();
+                save();
+                render();
+            }
+        };
+
+        // 更新週存錢金額
+        window.updateWeekAmount = function(id, val) {
+            const week = appState.weeks.find(w => w.id === id);
+            if (week) {
+                week.amount = parseInt(val) || 0;
+                save();
+                render();
+            }
+        };
+
+        // 更新緊急備用金
+        window.updateEmergency = function(idx, val) {
+            appState.emergency[idx] = parseInt(val) || 0;
+            save();
+            render();
+        };
+
+        // 顯示小語
+        function showToast() {
+            const toast = document.getElementById('toast');
+            const msg = encouragements[Math.floor(Math.random() * encouragements.length)];
+            toast.innerText = msg;
+            toast.style.display = 'block';
+            
+            // 簡單的淡入淡出邏輯
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 2500);
+        }
+
+        // 初始化執行
+        init();
+    </script>
+</body>
+</html>
+
+
