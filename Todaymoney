@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>今天ㄉ錢錢</title>
+    <!-- 使用 Tailwind CSS 進行基礎佈局 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 字體與全局樣式 */
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;900&display=swap');
+        
+        body {
+            font-family: 'Noto+Sans+TC', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+
+        /* 標題純色字母 (紅、橙、黃、綠、藍) */
+        .t-red { color: #ef4444; }
+        .t-orange { color: #f97316; }
+        .t-yellow { color: #eab308; }
+        .t-green { color: #22c55e; }
+        .t-blue { color: #3b82f6; }
+
+        /* 輸入框滾輪隱藏 */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        /* 自定義卡片與輸入樣式 */
+        .card {
+            background: white;
+            border-radius: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e2e8f0;
+        }
+
+        .input-box {
+            background-color: #f1f5f9;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .input-box:focus {
+            background-color: #ffffff;
+            border-color: #3b82f6;
+            outline: none;
+        }
+
+        /* 方塊配色 (純色填滿) */
+        .box-red { background-color: #ef4444; }
+        .box-orange { background-color: #f97316; }
+        .box-green { background-color: #22c55e; }
+        .box-blue { background-color: #3b82f6; }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+    <div class="max-w-md mx-auto">
+        
+        <!-- 標題區 -->
+        <header class="text-center mb-8">
+            <h1 class="text-5xl font-black tracking-tighter mb-2">
+                <span class="t-red">今</span><span class="t-orange">天</span><span class="t-yellow">ㄉ</span><span class="t-green">錢</span><span class="t-blue">錢</span>
+            </h1>
+            <p class="text-gray-400 font-bold">好好記帳，錢錢才不會飛走 💸</p>
+        </header>
+
+        <!-- 上方方塊：統計顯示 (純色填滿) -->
+        <div class="grid grid-cols-2 gap-3 mb-8">
+            <div class="box-red p-4 rounded-2xl text-white shadow-md">
+                <p class="text-xs font-bold opacity-80">本週總預算</p>
+                <p id="display-weekly-total" class="text-2xl font-black">$0</p>
+            </div>
+            <div class="box-orange p-4 rounded-2xl text-white shadow-md">
+                <p class="text-xs font-bold opacity-80">今日總花費</p>
+                <p id="display-today-spent" class="text-2xl font-black">$0</p>
+            </div>
+            <div class="box-green p-4 rounded-2xl text-white shadow-md">
+                <p class="text-xs font-bold opacity-80">本週剩餘</p>
+                <p id="display-weekly-rem" class="text-2xl font-black">$0</p>
+            </div>
+            <div class="box-blue p-4 rounded-2xl text-white shadow-md">
+                <p class="text-xs font-bold opacity-80">今日狀態</p>
+                <p id="display-status" class="text-xl font-black">載入中</p>
+            </div>
+        </div>
+
+        <!-- 12個月下拉與日期選擇 -->
+        <div class="card p-6 mb-6">
+            <div class="flex gap-4 mb-6">
+                <div class="flex-1">
+                    <label class="block text-xs font-bold text-gray-400 mb-1">歷史紀錄 (月)</label>
+                    <select id="month-select" class="w-full bg-gray-100 border-none rounded-lg p-2 font-bold text-gray-700 outline-none">
+                        <!-- JS 動態生成 -->
+                    </select>
+                </div>
+                <div class="flex-1">
+                    <label class="block text-xs font-bold text-gray-400 mb-1">當前日期</label>
+                    <input type="date" id="date-picker" class="w-full bg-gray-100 border-none rounded-lg p-2 font-bold text-gray-700 text-sm outline-none">
+                </div>
+            </div>
+
+            <!-- 輸入花費區域 -->
+            <div class="space-y-6">
+                <p class="text-[10px] text-blue-500 font-bold">* 支援算式輸入，如 100+50*2</p>
+                
+                <!-- 吃 -->
+                <div>
+                    <div class="flex justify-between items-end mb-1">
+                        <span class="text-lg font-black text-gray-700">🍚 吃</span>
+                        <span id="bal-food" class="text-sm font-black text-green-600">餘額: 0</span>
+                    </div>
+                    <input type="text" id="in-food" placeholder="今天吃了什麼？" class="w-full input-box p-3 rounded-xl font-mono text-lg">
+                </div>
+
+                <!-- 日用品 -->
+                <div>
+                    <div class="flex justify-between items-end mb-1">
+                        <span class="text-lg font-black text-gray-700">🧻 日用品</span>
+                        <span id="bal-daily" class="text-sm font-black text-orange-600">週剩: 0</span>
+                    </div>
+                    <input type="text" id="in-daily" placeholder="消耗品紀錄..." class="w-full input-box p-3 rounded-xl font-mono text-lg">
+                </div>
+
+                <!-- 交通 -->
+                <div>
+                    <div class="flex justify-between items-end mb-1">
+                        <span class="text-lg font-black text-gray-700">🚌 交通</span>
+                        <span id="bal-trans" class="text-sm font-black text-yellow-600">週剩: 0</span>
+                    </div>
+                    <input type="text" id="in-trans" placeholder="公車或捷運..." class="w-full input-box p-3 rounded-xl font-mono text-lg">
+                </div>
+
+                <!-- 狗狗 -->
+                <div>
+                    <div class="flex justify-between items-end mb-1">
+                        <span class="text-lg font-black text-gray-700">🐶 狗狗</span>
+                        <span id="bal-dog" class="text-sm font-black text-blue-600">週剩: 0</span>
+                    </div>
+                    <input type="text" id="in-dog" placeholder="毛孩的開銷..." class="w-full input-box p-3 rounded-xl font-mono text-lg">
+                </div>
+
+                <button id="save-btn" class="w-full bg-black text-white font-black py-4 rounded-xl hover:bg-gray-800 transition active:scale-95 text-xl mt-4">
+                    儲存今日紀錄
+                </button>
+            </div>
+        </div>
+
+        <!-- 預算調整設定區 -->
+        <div class="card p-6 border-t-8 border-gray-900">
+            <h2 class="text-xl font-black mb-4">⚙️ 預算調整設定</h2>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 mb-1">吃 (日預算)</label>
+                    <input type="number" id="set-food" value="300" class="w-full bg-gray-50 border border-gray-200 p-2 rounded-lg font-bold">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 mb-1">日用品 (週預算)</label>
+                    <input type="number" id="set-daily" value="300" class="w-full bg-gray-50 border border-gray-200 p-2 rounded-lg font-bold">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 mb-1">交通 (週預算)</label>
+                    <input type="number" id="set-trans" value="400" class="w-full bg-gray-50 border border-gray-200 p-2 rounded-lg font-bold">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 mb-1">狗狗 (週預算)</label>
+                    <input type="number" id="set-dog" value="400" class="w-full bg-gray-50 border border-gray-200 p-2 rounded-lg font-bold">
+                </div>
+            </div>
+        </div>
+
+        <!-- 浮動成功提示 -->
+        <div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-8 py-3 rounded-full text-sm font-bold shadow-2xl opacity-0 transition-opacity pointer-events-none z-50">
+            成功存入錢錢筆記本！
+        </div>
+    </div>
+
+    <script>
+        /**
+         * 邏輯部分
+         */
+
+        // 1. 初始化基礎元件
+        const monthSelect = document.getElementById('month-select');
+        const datePicker = document.getElementById('date-picker');
+        const months = ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"];
+        
+        // 生成月份下拉紀錄
+        const currentYear = new Date().getFullYear();
+        months.forEach((m, i) => {
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.textContent = m;
+            if (i === new Date().getMonth()) opt.selected = true;
+            monthSelect.appendChild(opt);
+        });
+        datePicker.valueAsDate = new Date();
+
+        // 2. 算式解析函數
+        function parseFormula(str) {
+            try {
+                // 過濾不安全字符，只允許數字和運算子
+                const cleaned = str.replace(/[^-+*/0-9.]/g, '');
+                if (!cleaned) return 0;
+                // 使用 Function 構造器進行簡單計算
+                const result = new Function(`return ${cleaned}`)();
+                return isFinite(result) ? Math.round(result * 100) / 100 : 0;
+            } catch {
+                return 0;
+            }
+        }
+
+        // 3. 核心更新與聯動函數
+        function updateAll() {
+            // 讀取預算設定
+            const budgetSetting = {
+                food: parseFloat(document.getElementById('set-food').value) || 0,
+                daily: parseFloat(document.getElementById('set-daily').value) || 0,
+                trans: parseFloat(document.getElementById('set-trans').value) || 0,
+                dog: parseFloat(document.getElementById('set-dog').value) || 0
+            };
+
+            // 讀取當前輸入
+            const inputSpent = {
+                food: parseFormula(document.getElementById('in-food').value),
+                daily: parseFormula(document.getElementById('in-daily').value),
+                trans: parseFormula(document.getElementById('in-trans').value),
+                dog: parseFormula(document.getElementById('in-dog').value)
+            };
+
+            // 更新吃（日餘額）
+            const foodBal = budgetSetting.food - inputSpent.food;
+            const foodBalEl = document.getElementById('bal-food');
+            foodBalEl.textContent = `餘額: ${foodBal}`;
+            foodBalEl.style.color = foodBal < 0 ? '#ef4444' : '#22c55e';
+
+            // 更新其他三項（週餘額）
+            const updateWeeklyItem = (id, budget, spent, color) => {
+                const rem = budget - spent;
+                const el = document.getElementById(`bal-${id}`);
+                el.textContent = `週剩: ${rem}`;
+                el.style.color = rem < 0 ? '#ef4444' : color;
+            };
+
+            updateWeeklyItem('daily', budgetSetting.daily, inputSpent.daily, '#f97316');
+            updateWeeklyItem('trans', budgetSetting.trans, inputSpent.trans, '#eab308');
+            updateWeeklyItem('dog', budgetSetting.dog, inputSpent.dog, '#3b82f6');
+
+            // 上方方塊聯動計算
+            // 總預算 = (吃*7天) + 其他三項週預算
+            const totalWeeklyBudget = (budgetSetting.food * 7) + budgetSetting.daily + budgetSetting.trans + budgetSetting.dog;
+            const todayTotalSpent = inputSpent.food + inputSpent.daily + inputSpent.trans + inputSpent.dog;
+            const weeklyRemaining = totalWeeklyBudget - todayTotalSpent;
+
+            document.getElementById('display-weekly-total').textContent = `$${totalWeeklyBudget.toLocaleString()}`;
+            document.getElementById('display-today-spent').textContent = `$${todayTotalSpent.toLocaleString()}`;
+            document.getElementById('display-weekly-rem').textContent = `$${weeklyRemaining.toLocaleString()}`;
+
+            // 狀態文字
+            const statusEl = document.getElementById('display-status');
+            if (todayTotalSpent === 0) statusEl.textContent = "尚未輸入";
+            else if (todayTotalSpent < budgetSetting.food) statusEl.textContent = "省錢寶寶";
+            else if (weeklyRemaining < 0) statusEl.textContent = "要吃土了";
+            else statusEl.textContent = "還可以吧";
+        }
+
+        // 4. 事件綁定
+        const trackIds = ['in-food', 'in-daily', 'in-trans', 'in-dog', 'set-food', 'set-daily', 'set-trans', 'set-dog'];
+        trackIds.forEach(id => {
+            document.getElementById(id).addEventListener('input', updateAll);
+        });
+
+        // 5. 儲存與 Toast 效果
+        document.getElementById('save-btn').addEventListener('click', () => {
+            const toast = document.getElementById('toast');
+            toast.style.opacity = '1';
+            
+            // 存入 localStorage (以日期為 Key)
+            const dateKey = datePicker.value;
+            const logs = JSON.parse(localStorage.getItem('my_money_data') || '{}');
+            logs[dateKey] = {
+                food: parseFormula(document.getElementById('in-food').value),
+                daily: parseFormula(document.getElementById('in-daily').value),
+                trans: parseFormula(document.getElementById('in-trans').value),
+                dog: parseFormula(document.getElementById('in-dog').value),
+                config: {
+                    f: document.getElementById('set-food').value,
+                    da: document.getElementById('set-daily').value,
+                    t: document.getElementById('set-trans').value,
+                    do: document.getElementById('set-dog').value
+                }
+            };
+            localStorage.setItem('my_money_data', JSON.stringify(logs));
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+            }, 2000);
+        });
+
+        // 初始化執行
+        updateAll();
+    </script>
+</body>
+</html>
+
+
